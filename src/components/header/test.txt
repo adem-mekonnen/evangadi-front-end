@@ -1,0 +1,345 @@
+import { useState, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import styled from "styled-components";
+
+import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
+import axios from "../axios";
+import { useAppData } from "../App";
+
+const Auth = () => {
+  const { state, dispatch } = useAppData();
+  const navigate = useNavigate();
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const emailRef = useRef();
+  const passwordRef = useRef();
+  const usernameRef = useRef();
+  const firstNameRef = useRef();
+  const lastNameRef = useRef();
+  const emailRegisterRef = useRef();
+  const passwordRegisterRef = useRef();
+
+  const handleInputAlert = (ref) => {
+    ref.current.style.backgroundColor = "#fee6e6";
+    ref.current.focus();
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    emailRef.current.style.backgroundColor = "#fff";
+    passwordRef.current.style.backgroundColor = "#fff";
+
+    if (!emailRef.current.value) {
+      handleInputAlert(emailRef);
+      return;
+    }
+    if (!passwordRef.current.value) {
+      handleInputAlert(passwordRef);
+      return;
+    }
+
+    try {
+      dispatch({ type: "CLEAR_ALERT" });
+      setLoading(true);
+
+      const { data } = await axios.post("/user/login", {
+        email: emailRef.current.value,
+        password: passwordRef.current.value,
+      });
+
+      localStorage.setItem("token", data.token);
+      dispatch({ type: "SET_USER", payload: data.username });
+      navigate("/home");
+    } catch (error) {
+      setLoading(false);
+      const errorMessage =
+        error?.response?.data?.error ||
+        "Something went wrong, please try again later.";
+      dispatch({ type: "ALERT", payload: errorMessage });
+      console.error(errorMessage);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    // Reset background color for all fields
+    [
+      usernameRef,
+      firstNameRef,
+      lastNameRef,
+      emailRegisterRef,
+      passwordRegisterRef,
+    ].forEach((ref) => {
+      ref.current.style.backgroundColor = "#fff";
+    });
+
+    // Input validation
+    const fields = [
+      { ref: usernameRef, message: "Username is required." },
+      { ref: firstNameRef, message: "First name is required." },
+      { ref: lastNameRef, message: "Last name is required." },
+      { ref: emailRegisterRef, message: "Email address is required." },
+      { ref: passwordRegisterRef, message: "Password is required." },
+    ];
+    for (const field of fields) {
+      if (!field.ref.current.value) {
+        handleInputAlert(field.ref);
+        dispatch({ type: "ALERT", payload: field.message });
+        return;
+      }
+    }
+
+    try {
+      setLoading(true);
+      const { data } = await axios.post("/user/register", {
+        username: usernameRef.current.value,
+        firstname: firstNameRef.current.value,
+        lastname: lastNameRef.current.value,
+        email: emailRegisterRef.current.value,
+        password: passwordRegisterRef.current.value,
+      });
+
+      localStorage.setItem("token", data.token);
+      dispatch({ type: "SET_USER", payload: data.username });
+      navigate("/home");
+    } catch (error) {
+      setLoading(false);
+      const errorMessage =
+        error?.response?.data?.error ||
+        "Something went wrong, please try again later.";
+      dispatch({ type: "ALERT", payload: errorMessage });
+      console.error(errorMessage);
+    }
+  };
+
+  return (
+    <Wrapper>
+      <Carousel>
+        {/* Login */}
+        <CarouselItem className="carousel-item active">
+          <LoginRegisterForm onSubmit={handleLogin}>
+            <h5>Login to your account</h5>
+            <div>
+              Don’t have an account?{" "}
+              <span onClick={() => navigate("/register")}>
+                Create a new account
+              </span>
+            </div>
+            <FormField>
+              <input ref={emailRef} type="email" placeholder="Email address" />
+            </FormField>
+            <FormField className="password">
+              <input
+                ref={passwordRef}
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+              />
+              <PasswordToggle onClick={() => setShowPassword(!showPassword)}>
+                {showPassword ? <AiOutlineEye /> : <AiOutlineEyeInvisible />}
+              </PasswordToggle>
+            </FormField>
+            <ForgotPasswordLink to="/resetpassword">
+              Forgot password?
+            </ForgotPasswordLink>
+            <SubmitButton disabled={loading}>
+              {loading ? "Logging in..." : "Login"}
+            </SubmitButton>
+          </LoginRegisterForm>
+        </CarouselItem>
+
+        {/* Register */}
+        <CarouselItem className="carousel-item">
+          <LoginRegisterForm onSubmit={handleRegister}>
+            <h5>Join the network</h5>
+            <div>
+              Already have an account?{" "}
+              <span onClick={() => navigate("/")}>Sign in</span>
+            </div>
+            <FormField>
+              <input ref={usernameRef} type="text" placeholder="Username" />
+            </FormField>
+            <div className="row">
+              <FormField className="col-md-6">
+                <input
+                  ref={firstNameRef}
+                  type="text"
+                  placeholder="First name"
+                />
+              </FormField>
+              <FormField className="col-md-6">
+                <input ref={lastNameRef} type="text" placeholder="Last name" />
+              </FormField>
+            </div>
+            <FormField>
+              <input
+                ref={emailRegisterRef}
+                type="email"
+                placeholder="Email address"
+              />
+            </FormField>
+            <FormField className="password">
+              <input
+                ref={passwordRegisterRef}
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+              />
+              <PasswordToggle onClick={() => setShowPassword(!showPassword)}>
+                {showPassword ? <AiOutlineEye /> : <AiOutlineEyeInvisible />}
+              </PasswordToggle>
+            </FormField>
+            <PrivacyPolicy>
+              I agree to the <Link to="/privacy-policy">privacy policy</Link>{" "}
+              and <Link to="/terms-of-service">terms of service</Link>.
+            </PrivacyPolicy>
+            <SubmitButton disabled={loading}>
+              {loading ? "Registering..." : "Agree and Join"}
+            </SubmitButton>
+          </LoginRegisterForm>
+        </CarouselItem>
+      </Carousel>
+    </Wrapper>
+  );
+};
+
+// Wrapper
+const Wrapper = styled.section`
+  text-align: center;
+
+  span {
+    color: #fe8402;
+    cursor: pointer;
+  }
+
+  span:hover {
+    text-decoration: underline;
+  }
+
+  form {
+    margin-top: 30px;
+  }
+`;
+
+// Carousel
+const Carousel = styled.div`
+  .carousel-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+`;
+
+// Carousel Item
+const CarouselItem = styled.div`
+  width: 100%;
+`;
+
+// Login/Register Form
+const LoginRegisterForm = styled.form`
+  padding: 0 10px;
+  font-size: 0.9rem;
+`;
+
+// Form Field
+const FormField = styled.div`
+  position: relative;
+  margin-top: 15px;
+  width: 100%;
+
+  input {
+    padding: 10px 15px;
+    width: 100%;
+    margin-top: 15px;
+    border-radius: 5px;
+    border: 0.5px solid #cacaca;
+  }
+
+  input:focus {
+    outline: none;
+    border-bottom: 2px solid #fe8402;
+  }
+`;
+
+// Password Toggle
+const PasswordToggle = styled.span`
+  position: absolute;
+  top: 50%;
+  right: 5%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  color: #848484;
+  cursor: pointer;
+
+  &:hover {
+    color: #fe8402;
+  }
+`;
+
+// Forgot Password Link
+const ForgotPasswordLink = styled(Link)`
+  display: block;
+  text-decoration: none;
+  color: #fe8402;
+  text-align: right;
+  margin-top: 15px;
+
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+// Buttons
+const SubmitButton = styled.button`
+  font-size: 1rem;
+  padding: 5px 10px;
+  width: 100%;
+  border-radius: 5px;
+  border: none;
+  margin-top: 20px;
+  color: white;
+  background-color: #516cf0;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #fe8402;
+  }
+`;
+
+// Disabled State
+const DisabledButton = styled(SubmitButton)`
+  cursor: not-allowed;
+
+  &:hover {
+    background-color: #848484 !important;
+  }
+`;
+
+// Privacy Policy
+const PrivacyPolicy = styled.div`
+  margin-top: 15px;
+  font-size: 0.7rem;
+
+  a {
+    color: #fe8402;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+`;
+
+export {
+  Wrapper,
+  Carousel,
+  CarouselItem,
+  LoginRegisterForm,
+  FormField,
+  PasswordToggle,
+  ForgotPasswordLink,
+  SubmitButton,
+  DisabledButton,
+  PrivacyPolicy,
+};
+
+export default Auth;
